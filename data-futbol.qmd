@@ -12,7 +12,19 @@ La idea de este artículo es explorar algunas variantes dentro del análisis de 
 
 -   Generar un workflow para el análisis de datos orientados al futbol
 
--   Explorar las opciones del paquete [worldfootballR](https://jaseziv.github.io/worldfootballR/index.html) 
+-   Explorar las opciones del paquete [worldfootballR](https://jaseziv.github.io/worldfootballR/index.html)
+
+-   Explorar opciones de fuentes de google
+
+-   Explorar estilos de visualizaciones
+
+## Recursos
+
+https://www.youtube.com/watch?v=mBbQpaLWcLM&ab_channel=LanusStats%7CAnalisisdedatosparaf%C3%BAtbol
+
+https://github.com/OKcomputer626/football_ggplots/tree/main/Liga%20MX
+
+## **Datos y Limpieza**
 
 ```{r}
 #VER https://rpubs.com/jojorabbit1/1052372
@@ -23,22 +35,174 @@ La idea de este artículo es explorar algunas variantes dentro del análisis de 
 rm(list = ls())
 options(scipen = 999)
 
-
+#install.packages("worldfootballR")
 library(worldfootballR)
 library(tidyverse)
-library(gt)
+library(DT)
+#install.packages("showtext")
+library(showtext)
+#install.packages("ggtext")
+library(ggtext)
+
+#fuentes
+
+font_add_google(family = "montserrat", "Montserrat")
+font_add_google(family = "Oswald", "Oswald")
+showtext_auto()
+
 
 
 ```
 
+```{r}
+##########################################################################PRUEBA DE SCRAPEO POR PARTIDOS################################################
 
+primera_division <- fb_match_urls(country = "ARG", #liga arg
+                                  gender = "M", #masculino
+                                  season_end_year = 2024, #temporada
+                                  non_dom_league_url = "https://fbref.com/en/comps/905/history/Copa-de-la-Liga-Profesional-Seasons",
+                                  tier="1st")
+
+# #recuperamos las estadisticas avanzadas
+
+primera_resumen <- fb_advanced_match_stats(match_url = primera_division,
+                                           stat_type = "summary",
+                                           team_or_player = "team")
+
+#######################################################################################################################################################
+
+primera_resumen_racing <- primera_resumen %>% 
+  filter(Team == "Racing Club")
+
+penales <- primera_resumen %>%
+  select(Team,PK, PKatt) %>% 
+  group_by(Team) %>% 
+  summarise(sum(PK),
+            sum(PKatt))
+
+winrate <- sum(penales$PK)/(sum(penales$PKatt))
+
+
+penalesint <- sum(penales$PKatt)
+penalesgol <- sum(penales$PK)
+
+```
 
 ```{r}
 #carga de función
 
+cups <- c("UEFA European Football Championship")
+df <- load_match_comp_results(comp_name = cups)
+
+df_url_2021 <- fb_match_urls(country = "",
+                        gender = "M",
+                        season_end_year = 2021,
+                        non_dom_league_url =  "https://fbref.com/en/comps/676/history/European-Championship-Seasons")
+
+df_resumen_2021 <- fb_advanced_match_stats(match_url = df_url_2021,
+                                           stat_type = "summary",
+                                           team_or_player = "team")
+
+
+
+df_url_2024 <- fb_match_urls(country = "",
+                        gender = "M",
+                        season_end_year = 2024,
+                        non_dom_league_url =  "https://fbref.com/en/comps/676/history/European-Championship-Seasons")
+
+df_resumen_2024 <- fb_advanced_match_stats(match_url = df_url_2024,
+                                           stat_type =  "summary",
+                                           team_or_player = "team")
+
+
 
 
 
 
 ```
+
+
+```{r}
+# ejemplo de OKcomputer626 https://github.com/OKcomputer626/football_ggplots/blob/main/Liga%20MX/Club%20America%20FC%20Trendline.R
+# explicación de media movil https://rpubs.com/arquez9512/628582
+
+fb_teams_urls("https://fbref.com/en/comps/31/2023-2024/2023-2024-Liga-MX-Stats")
+df <- fb_team_match_results("https://fbref.com/en/squads/18d3c3a3/2023-2024/America-Stats")
+
+df_mx <- df %>% 
+  mutate(
+    xg_roll = zoo::rollmean(xG, k = 5, fill = NA),
+    xGA_roll = zoo::rollmean(xGA, k = 5, fill = NA)) %>% 
+  select(Date,xg_roll,xGA_roll) %>% 
+  pivot_longer(
+    cols = c(xg_roll,xGA_roll),
+    names_to = "Variables",
+    values_to = "count"
+  )
+  
+#write_csv2(df_mx,"../data-futbol/data/df_mx.csv")
+
+df_mx %>%
+  ggplot(aes(x = Date, y = count, group = Variables, color = Variables, fill = Variables)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 2.8, shape = 21, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", linewidth = 0.7) +
+  geom_vline(xintercept = c("2023-11-29", "2023-12-17"), color = "white", linetype = "dashed", size = 0.8)+
+  annotate("text", x = "2023-09-30", y = 2.5, color = "white", label = "Apertura 2023 Regular Season", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("text", x = 20.5, y = 2.5, color = "white", label = "Liguilla 2023", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("text", x = 20.5, y = 2.425, color = "#D38D20", label = "CHAMPIONS", family = "Oswald", fontface = "bold", size = 10) +
+  annotate("text", x = "2024-01-27", y = 2.5, color = "white", label = "Clausura 2024 Regular Season", family = "montserrat", fontface = "bold", size = 8.5) +
+  labs(
+    title = "Club América Expected Goals <span style = 'color:#ffeb00;'>For</span> & <span style = 'color:#e62b2f;'>Against</span> Trend Over Time",
+    subtitle = "5 game rolling average | Liga MX | Apertura 2023 - Clausura 2024 MD 9",
+    caption = "X: @AndresAnalytics | Data: fbref via Opta",
+    x = "MatchDate",
+    y = "Expected Goals Per Game"
+  ) +
+  scale_color_manual(values = c("#ffeb00","#e62b2f")) +
+  scale_fill_manual(values = c("#ffeb00","#e62b2f")) +
+  theme(
+    text = element_text(family = "montserrat", color = "white"),
+    plot.background = element_rect(fill = "#292929"),
+    plot.title = element_markdown(face = "bold", size = 32, hjust = 0.5),
+    plot.subtitle = element_text(size = 22, hjust = 0.5),
+    plot.caption = element_text(face = "italic", size = 20),
+    axis.text = element_text(face = "bold", size = 20, color = "white"),
+    axis.text.x = element_text(angle = 90),#ROTA LAS FECHAS DEL EJE X
+    axis.ticks = element_blank(),
+    panel.background = element_rect(fill = "#292929"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(linetype = "dashed", color = "grey25", size = 0.3),
+    legend.position = "none"
+    
+  )
+ggsave("America FC trendline.png", width = 12)
+
+
+```
+
+
+```{r}
+theme(
+    text = element_text(family = "montserrat", color = "white"),
+    plot.background = element_rect(fill = "#292929"),
+    plot.title = element_markdown(face = "bold", size = 32, hjust = 0.5),
+    plot.subtitle = element_text(size = 22, hjust = 0.5),
+    plot.caption = element_text(face = "italic", size = 20),
+    axis.title = element_text(face = "bold", size = 28),
+    axis.text = element_text(face = "bold", size = 20, color = "white"),
+    axis.text.x = element_text(angle = 90),
+    axis.ticks = element_blank(),
+    panel.background = element_rect(fill = "#292929"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(linetype = "dashed", color = "grey25", size = 0.3),
+    legend.position = "none"
+  )
+```
+
+
+```{r}
+```
+
+
 
