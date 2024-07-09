@@ -181,28 +181,99 @@ ggsave("America FC trendline.png", width = 12)
 
 ```
 
+# NIVEL EQUIPO
+
+La idea es ahora replicar este mismo gráfico con los siguientes objetivos:
+
+* Usar datos de futbol argentino (Racing)
+* unir temporadas para hacer una serie de 2 o 3
+* Marcar periodos de dts (Pizzi : 21/01/21 - 9/8/21)
+                          Gago  : 23/10/21 - 1/10/23)
+* usar otra fuente y otro estilo de colores
+
 
 ```{r}
-theme(
-    text = element_text(family = "montserrat", color = "white"),
-    plot.background = element_rect(fill = "#292929"),
+#Carga y limpieza
+
+# link_lp2022 <- fb_teams_urls("https://fbref.com/en/comps/21/2022/2022-Liga-Profesional-Argentina-Stats")
+df_lp2021   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2021/Racing-Club-Stats")
+# df_lp2022   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2022/Racing-Club-Stats")
+# df_lp2023   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2023/Racing-Club-Stats")
+# df_lp2024   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2024/Racing-Club-Stats")
+
+
+#df_racing <- rbind(df_lp2021,df_lp2022,df_lp2023,df_lp2024)
+
+df_rac <- df_lp2021 %>% 
+  mutate(
+    xg_roll = zoo::rollmean(xG, k = 5, fill = NA),
+    xGA_roll = zoo::rollmean(xGA, k = 5, fill = NA)) %>% 
+  select(Date,xg_roll,xGA_roll) %>% 
+  pivot_longer(
+    cols = c(xg_roll,xGA_roll),
+    names_to = "Variables",
+    values_to = "count"
+  )
+
+#write_csv2(df_racing,"../data-futbol/data/df_racing.csv")
+
+df_aux <- left_join(df_rac,df_lp2021) %>% 
+  select(c(Date,Variables,count,Comp))
+
+df_sinlib <- df_aux %>% 
+  filter(Comp != "Libertadores")
+  
+
+```
+
+Visualización racing
+
+NOTA: El grafico funciona pero hay que ver el tema de las fechas (se puede pensar una visualización por año) y los vline
+
+```{r}
+
+df_aux %>%
+  filter(Comp != "Libertadores") %>% 
+  ggplot(aes(x = Date, y = count, group = Variables, color = Variables, fill = Variables)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 2.8, shape = 21, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", linewidth = 0.7) +
+  geom_vline(xintercept = c("2021-06-04"), color = "#1b1f2f", linetype = "dashed", size = 0.8)+
+  annotate("segment", x = "2021-02-12", xend= "2021-08-10",y = 2.3, colour = "#2c698d")+
+  annotate("text", x = "2021-05-16",y = 2.35, color = "#2c698d", label = "Juan Antonio Pizzi", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("segment", x = "2021-08-10", xend= "2021-10-19",y = 2.3, colour = "#fb7756")+
+  annotate("text", x = "2021-09-18",y = 2.35, color = "#fb7756", label = "Claudio Ubeda", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("segment", x = "2021-10-19", xend= "2021-12-11",y = 2.3, colour = "#272643")+
+  annotate("text", x = "2021-11-21",y = 2.35, color = "#272643", label = "Fernando Gago", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("text", x = "2021-09-30",y = 2.6, color = "#1b1f2f", label = "Liga Profesional 2021", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("text", x = "2021-04-04", y = 2.6, color = "#1b1f2f", label = "Copa de la Liga 2021", family = "montserrat", fontface = "bold", size = 8.5) +
+  labs(
+    title = "Racing Club Expected Goals <span style = 'color:#bae8e8;'>A favor</span> & <span style = 'color:#660000;'>En contra</span> Año 2021",
+    subtitle = "5 game rolling average | Copa de la Liga | Liga Profesional ",
+    caption = "X: @Guilleadhonorem | Data: fbref via Opta",
+    x = "MatchDate",
+    y = "Expected Goals Per Game"
+  ) +
+  scale_color_manual(values = c("#bae8e8","#660000")) +
+  scale_fill_manual(values = c("#bae8e8","#660000")) +
+  theme(
+    text = element_text(family = "montserrat", color = "black"),
+    plot.background = element_rect(fill = "#f7f6f6"),
     plot.title = element_markdown(face = "bold", size = 32, hjust = 0.5),
     plot.subtitle = element_text(size = 22, hjust = 0.5),
     plot.caption = element_text(face = "italic", size = 20),
-    axis.title = element_text(face = "bold", size = 28),
-    axis.text = element_text(face = "bold", size = 20, color = "white"),
-    axis.text.x = element_text(angle = 90),
+    axis.text = element_text(face = "bold", size = 20, color = "black"),
+    axis.text.x = element_text(angle = 90),#ROTA LAS FECHAS DEL EJE X
     axis.ticks = element_blank(),
-    panel.background = element_rect(fill = "#292929"),
+    panel.background = element_rect(fill = "#f7f6f6"),
     panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(linetype = "dashed", color = "grey25", size = 0.3),
+    panel.grid.major = element_line(linetype = "dashed", color = "#2c698d", size = 0.1),
     legend.position = "none"
+    
   )
+ggsave("Racing.png", width = 12)
+
+
 ```
-
-
-```{r}
-```
-
 
 
