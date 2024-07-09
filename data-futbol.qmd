@@ -271,9 +271,15 @@ df_aux %>%
     legend.position = "none"
     
   )
-ggsave("Racing.png", width = 12)
+ggsave("Racing-2021.png", width = 12)
 
 
 ```
 
+
+
+```{r}
+
+
+```
 

@@ -8,6 +8,22 @@ editor: visual
 
 La idea de este articulo es explorar las opciones de visualizaciones de datos de futbol a nivel equipos / selecciones
 
+## Ideas
+
+-   Evolutivos de variables:
+                            - xg y xga
+                            - tiros al arco / goles ??
+                            
+
+-   Rendimiento de jugadores:
+                              - Efectividad de delanteros
+                              - Pases
+                              - Defensa
+                              - Edad
+                              - Goleadores 1ero y 2ndo
+
+-   Posiciones en torneos
+
 
 ```{r}
 #VER https://rpubs.com/jojorabbit1/1052372
@@ -52,7 +68,8 @@ df_lp2021   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2021/
 
 #df_racing <- rbind(df_lp2021,df_lp2022,df_lp2023,df_lp2024)
 
-df_rac <- df_lp2021 %>% 
+df_rac <- df_lp2021 %>%
+  filter(Comp != "Libertadores") %>% 
   mutate(
     xg_roll = zoo::rollmean(xG, k = 5, fill = NA),
     xGA_roll = zoo::rollmean(xGA, k = 5, fill = NA)) %>% 
@@ -66,7 +83,7 @@ df_rac <- df_lp2021 %>%
 #write_csv2(df_racing,"../data-futbol/data/df_racing.csv")
 
 df_aux <- left_join(df_rac,df_lp2021) %>% 
-  select(c(Date,Variables,count,Comp)) #Se hace join con df_lp2021 para rescatar la columna comp y poder quitar los partidos de la Copa Libertadores
+  select(c(Date,Variables,count,Comp)) #Se hace join con df_lp2021 para rescatar la columna comp y poder quitar los partidos de la Copa Libertadores. Se                                         #quitó en el paso previo
 
 
 
@@ -116,8 +133,68 @@ df_aux %>%
     legend.position = "none"
     
   )
-ggsave("Racing-2021.png", width = 12)
+ggsave("Output/Racing-2021.png", width = 12)
+```
+## Año 2022
+
+```{r}
+df_lp2022   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2022/Racing-Club-Stats")
+df_rac <- df_lp2022 %>%
+  filter(Comp != "Sudamericana") %>% 
+  mutate(
+    xg_roll = zoo::rollmean(xG, k = 5, fill = NA),
+    xGA_roll = zoo::rollmean(xGA, k = 5, fill = NA)) %>% 
+  select(Date,xg_roll,xGA_roll) %>% 
+  pivot_longer(
+    cols = c(xg_roll,xGA_roll),
+    names_to = "Variables",
+    values_to = "count"
+  )
+
+#write_csv2(df_racing,"../data-futbol/data/df_racing.csv")
+
+df_aux_2022 <- left_join(df_rac,df_lp2022) %>% 
+  select(c(Date,Variables,count,Comp)) #Se hace join con df_lp2021 para rescatar la columna comp y poder quitar los partidos de la Copa Libertadores
+
 ```
 
+```{r}
+df_aux_2022 %>%
+  filter(Comp != "Sudamericana") %>% 
+  ggplot(aes(x = Date, y = count, group = Variables, color = Variables, fill = Variables)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 2.8, shape = 21, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", linewidth = 0.7) +
+  geom_vline(xintercept = c("2022-06-04"), color = "#1b1f2f", linetype = "dashed", size = 0.8)+
+  annotate("segment", x = "2022-02-13", xend= "2022-10-23",y = 2.3, colour = "#272643")+
+  annotate("text", x = "2022-06-26",y = 2.35, color = "#272643", label = "Fernando Gago", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("text", x = "2022-04-24",y = 2.6, color = "#1b1f2f", label = "Copa de la Liga Profesional 2022", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("text", x = "2022-08-27", y = 2.6, color = "#1b1f2f", label = "Liga Argentina 2022", family = "montserrat", fontface = "bold", size = 8.5) +
+  labs(
+    title = "Racing Club Expected Goals <span style = 'color:#bae8e8;'>A favor</span> & <span style = 'color:#660000;'>En contra</span> Año 2022",
+    subtitle = "5 game rolling average | Copa de la Liga | Liga Profesional ",
+    caption = "X: @Guilleadhonorem | Data: fbref via Opta",
+    x = "MatchDate",
+    y = "Expected Goals Per Game"
+  ) +
+  scale_color_manual(values = c("#bae8e8","#660000")) +
+  scale_fill_manual(values = c("#bae8e8","#660000")) +
+  theme(
+    text = element_text(family = "montserrat", color = "black"),
+    plot.background = element_rect(fill = "#f7f6f6"),
+    plot.title = element_markdown(face = "bold", size = 32, hjust = 0.5),
+    plot.subtitle = element_text(size = 22, hjust = 0.5),
+    plot.caption = element_text(face = "italic", size = 20),
+    axis.text = element_text(face = "bold", size = 20, color = "black"),
+    axis.text.x = element_text(angle = 90),#ROTA LAS FECHAS DEL EJE X
+    axis.ticks = element_blank(),
+    panel.background = element_rect(fill = "#f7f6f6"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(linetype = "dashed", color = "#2c698d", size = 0.1),
+    legend.position = "none"
+    
+  )
+ggsave("Output/Racing-2022.png", width = 12)
+```
 
-
+## Año 2023
