@@ -34,14 +34,16 @@ La idea de este articulo es explorar las opciones de visualizaciones de datos de
 rm(list = ls())
 options(scipen = 999)
 
-#install.packages("worldfootballR")
 library(worldfootballR)
 library(tidyverse)
 library(DT)
-#install.packages("showtext")
 library(showtext)
-#install.packages("ggtext")
 library(ggtext)
+#install.packages("polite")
+library(polite)
+  
+
+
 
 #fuentes
 
@@ -60,7 +62,7 @@ plot1: evolutivo media movil de xg y xga por temporada
 #CARGA DE DATOS
 
 # link_lp2022 <- fb_teams_urls("https://fbref.com/en/comps/21/2022/2022-Liga-Profesional-Argentina-Stats")
-df_lp2021   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2021/Racing-Club-Stats")
+# df_lp2021   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2021/Racing-Club-Stats")
 # df_lp2022   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2022/Racing-Club-Stats")
 # df_lp2023   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2023/Racing-Club-Stats")
 # df_lp2024   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2024/Racing-Club-Stats")
@@ -68,8 +70,8 @@ df_lp2021   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2021/
 
 #df_racing <- rbind(df_lp2021,df_lp2022,df_lp2023,df_lp2024)
 
-df_rac <- df_lp2021 %>%
-  filter(Comp != "Libertadores") %>% 
+df_rac <- df_lp2024 %>%
+  filter(Comp != "Sudamericana") %>% 
   mutate(
     xg_roll = zoo::rollmean(xG, k = 5, fill = NA),
     xGA_roll = zoo::rollmean(xGA, k = 5, fill = NA)) %>% 
@@ -82,8 +84,8 @@ df_rac <- df_lp2021 %>%
 
 #write_csv2(df_racing,"../data-futbol/data/df_racing.csv")
 
-df_aux <- left_join(df_rac,df_lp2021) %>% 
-  select(c(Date,Variables,count,Comp)) #Se hace join con df_lp2021 para rescatar la columna comp y poder quitar los partidos de la Copa Libertadores. Se                                         #quitó en el paso previo
+df_aux <- left_join(df_rac,df_lp2024) %>% 
+  select(c(Date,Variables,count,Comp)) #Se hace join con df_lpxxxx para rescatar la columna comp y ver fechas.                                        
 
 
 
@@ -95,22 +97,17 @@ Plot1
 ```{r}
 
 df_aux %>%
-  filter(Comp != "Libertadores") %>% 
   ggplot(aes(x = Date, y = count, group = Variables, color = Variables, fill = Variables)) +
   geom_line(linewidth = 0.5) +
   geom_point(size = 2.8, shape = 21, color = "black") +
   geom_smooth(method = "lm", se = FALSE, linetype = "dashed", linewidth = 0.7) +
-  geom_vline(xintercept = c("2021-06-04"), color = "#1b1f2f", linetype = "dashed", size = 0.8)+
-  annotate("segment", x = "2021-02-12", xend= "2021-08-10",y = 2.3, colour = "#2c698d")+
-  annotate("text", x = "2021-05-16",y = 2.35, color = "#2c698d", label = "Juan Antonio Pizzi", family = "montserrat", fontface = "bold", size = 8.5) +
-  annotate("segment", x = "2021-08-10", xend= "2021-10-19",y = 2.3, colour = "#fb7756")+
-  annotate("text", x = "2021-09-18",y = 2.35, color = "#fb7756", label = "Claudio Ubeda", family = "montserrat", fontface = "bold", size = 8.5) +
-  annotate("segment", x = "2021-10-19", xend= "2021-12-11",y = 2.3, colour = "#272643")+
-  annotate("text", x = "2021-11-21",y = 2.35, color = "#272643", label = "Fernando Gago", family = "montserrat", fontface = "bold", size = 8.5) +
-  annotate("text", x = "2021-09-30",y = 2.6, color = "#1b1f2f", label = "Liga Profesional 2021", family = "montserrat", fontface = "bold", size = 8.5) +
-  annotate("text", x = "2021-04-04", y = 2.6, color = "#1b1f2f", label = "Copa de la Liga 2021", family = "montserrat", fontface = "bold", size = 8.5) +
+  geom_vline(xintercept = c("2024-05-12"), color = "#1b1f2f", linetype = "dashed", size = 0.8)+
+  annotate("segment", x = "2024-01-27", xend= "2024-06-13",y = 2.3, colour = "#0f6e6e")+
+  annotate("text", x = "2024-05-12",y = 2.35, color = "#0f6e6e", label = "Gustavo Costas", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("text", x = "2024-07-20",y = 2.6, color = "#1b1f2f", label = "Liga Profesional 2024", family = "montserrat", fontface = "bold", size = 8.5) +
+  annotate("text", x = "2024-02-24", y = 2.6, color = "#1b1f2f", label = "Copa de la Liga 2024", family = "montserrat", fontface = "bold", size = 8.5) +
   labs(
-    title = "Racing Club Expected Goals <span style = 'color:#bae8e8;'>A favor</span> & <span style = 'color:#660000;'>En contra</span> Año 2021",
+    title = "Racing Club Expected Goals <span style = 'color:#bae8e8;'>A favor</span> & <span style = 'color:#660000;'>En contra</span> Año 2024",
     subtitle = "5 game rolling average | Copa de la Liga | Liga Profesional ",
     caption = "X: @Guilleadhonorem | Data: fbref via Opta",
     x = "MatchDate",
@@ -133,68 +130,122 @@ df_aux %>%
     legend.position = "none"
     
   )
-ggsave("Output/Racing-2021.png", width = 12)
+ggsave("Output/Racing-2024.png", width = 12)
 ```
-## Año 2022
+#VER EDAD DE JUGADORES
 
 ```{r}
-df_lp2022   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2022/Racing-Club-Stats")
-df_rac <- df_lp2022 %>%
-  filter(Comp != "Sudamericana") %>% 
-  mutate(
-    xg_roll = zoo::rollmean(xG, k = 5, fill = NA),
-    xGA_roll = zoo::rollmean(xGA, k = 5, fill = NA)) %>% 
-  select(Date,xg_roll,xGA_roll) %>% 
-  pivot_longer(
-    cols = c(xg_roll,xGA_roll),
-    names_to = "Variables",
-    values_to = "count"
-  )
 
-#write_csv2(df_racing,"../data-futbol/data/df_racing.csv")
+# https://github.com/OKcomputer626/football_ggplots/blob/main/Premier%20League%202021-2022/Arsenal_age_utility_2022.Rmd
+# https://github.com/Ryo-N7/soccer_ggplots/blob/master/Serie%20A%202019-2020/output/InterMilan_age_utility_3120.png
 
-df_aux_2022 <- left_join(df_rac,df_lp2022) %>% 
-  select(c(Date,Variables,count,Comp)) #Se hace join con df_lp2021 para rescatar la columna comp y poder quitar los partidos de la Copa Libertadores
+pacman::p_load(tidyverse, polite, scales, ggimage, rvest, 
+               glue, extrafont, showtext, ggrepel, magick, 
+               ggforce, ggtext, lubridate, 
+               cowplot, patchwork, rlang)
+
+
+# racing  https://www.transfermarkt.com/racing-club/kader/verein/1444/saison_id/2023/plus/1
 
 ```
+
+
 
 ```{r}
-df_aux_2022 %>%
-  filter(Comp != "Sudamericana") %>% 
-  ggplot(aes(x = Date, y = count, group = Variables, color = Variables, fill = Variables)) +
-  geom_line(linewidth = 0.5) +
-  geom_point(size = 2.8, shape = 21, color = "black") +
-  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", linewidth = 0.7) +
-  geom_vline(xintercept = c("2022-06-04"), color = "#1b1f2f", linetype = "dashed", size = 0.8)+
-  annotate("segment", x = "2022-02-13", xend= "2022-10-23",y = 2.3, colour = "#272643")+
-  annotate("text", x = "2022-06-26",y = 2.35, color = "#272643", label = "Fernando Gago", family = "montserrat", fontface = "bold", size = 8.5) +
-  annotate("text", x = "2022-04-24",y = 2.6, color = "#1b1f2f", label = "Copa de la Liga Profesional 2022", family = "montserrat", fontface = "bold", size = 8.5) +
-  annotate("text", x = "2022-08-27", y = 2.6, color = "#1b1f2f", label = "Liga Argentina 2022", family = "montserrat", fontface = "bold", size = 8.5) +
-  labs(
-    title = "Racing Club Expected Goals <span style = 'color:#bae8e8;'>A favor</span> & <span style = 'color:#660000;'>En contra</span> Año 2022",
-    subtitle = "5 game rolling average | Copa de la Liga | Liga Profesional ",
-    caption = "X: @Guilleadhonorem | Data: fbref via Opta",
-    x = "MatchDate",
-    y = "Expected Goals Per Game"
-  ) +
-  scale_color_manual(values = c("#bae8e8","#660000")) +
-  scale_fill_manual(values = c("#bae8e8","#660000")) +
-  theme(
-    text = element_text(family = "montserrat", color = "black"),
-    plot.background = element_rect(fill = "#f7f6f6"),
-    plot.title = element_markdown(face = "bold", size = 32, hjust = 0.5),
-    plot.subtitle = element_text(size = 22, hjust = 0.5),
-    plot.caption = element_text(face = "italic", size = 20),
-    axis.text = element_text(face = "bold", size = 20, color = "black"),
-    axis.text.x = element_text(angle = 90),#ROTA LAS FECHAS DEL EJE X
-    axis.ticks = element_blank(),
-    panel.background = element_rect(fill = "#f7f6f6"),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(linetype = "dashed", color = "#2c698d", size = 0.1),
-    legend.position = "none"
-    
-  )
-ggsave("Output/Racing-2022.png", width = 12)
+# Arsenal Football Club
+
+## Scrape Arsenal FC
+
+page1 <- "https://www.transfermarkt.com/arsenal-fc/leistungsdaten/verein/11/plus/0?reldata=GB1%262021"
+
+scraped_page <- read_html(page1)
+
+# grab name from photo element instead
+PlayerNames  <- scraped_page %>% html_nodes("#yw1 .bilderrahmen-fixed") %>% html_attr("title")
+
+# grab age
+age <- scraped_page %>% html_nodes(".posrela+ .zentriert") %>% html_text()
+
+# grab minutes played in league
+minutes <- scraped_page %>% html_nodes("td.rechts") %>% html_text()
+
+
+
+## Scrape length
+page <- "https://www.transfermarkt.com/arsenal-fc/kader/verein/11/saison_id/2021/plus/1"
+
+scraped_page <- read_html(page)
+
+# grab name from photo element instead
+PlayerNames2  <- scraped_page %>% html_nodes("#yw1 .bilderrahmen-fixed") %>% html_attr("title")
+
+# grab player birthday
+bday <- scraped_page %>% html_nodes(".posrela+ .zentriert") %>% html_text()
+
+# grab joined team
+joinedteam <- scraped_page %>% html_nodes(".zentriert:nth-child(8)") %>% html_text()
+joinedteam2 <-joinedteam[2:42]
+# grab leave team
+leaveteam <- scraped_page %>% html_nodes("td:nth-child(9)") %>% html_text()
+
+
+
+
 ```
 
-## Año 2023
+
+
+```{r}
+## clean
+
+# place each vector into list
+resultados <- list(PlayerNames, age, minutes)
+
+col_name <- c("name", "age", "minutes")
+
+results_comb <- resultados %>% 
+  reduce(cbind) %>% 
+  as_tibble() %>%
+  set_names(col_name)
+
+## join + bday
+resultados2 <- list(PlayerNames2, bday, 
+                    joinedteam2, leaveteam)
+
+col_name2 <- c("name", "bday", "join", "leave")
+
+results_comb2 <- resultados2 %>% 
+  reduce(cbind) %>% 
+  as_tibble() %>%
+  set_names(col_name2)
+
+## combine BOTH
+Arsenal1 <- results_comb %>%
+  left_join(results_comb2, by="name")
+
+# fix "strings" into proper formats, calculate % of minutes appeared
+
+arsenal <- Arsenal1 %>%
+  mutate(age = as.numeric(age),#convierte año en númerico
+         minutes = minutes %>%
+           str_replace_all(c("\\." = "","'"=""))%>% #quita caracteres en minutos y lo pasa a númerico
+           as.numeric(),
+         minutes_perc = (minutes / 1800) %>% #calcula el porcentual considerando 20 partidos (20*90)
+           round(digits = 3),
+         bday = bday %>%
+           str_replace("\\(.*\\)","") %>% #arma la fecha con month day year mdy
+           mdy(),
+         )
+
+
+
+
+```
+
+
+
+
+
+#VER ANALISIS DE PARTIDO
+
+https://github.com/Ryo-N7/soccer_ggplots/blob/master/Premier%20League%202019-2020/output/AC%20Int_match_summary_plot.png
