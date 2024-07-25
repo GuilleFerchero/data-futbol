@@ -249,3 +249,33 @@ arsenal <- Arsenal1 %>%
 #VER ANALISIS DE PARTIDO
 
 https://github.com/Ryo-N7/soccer_ggplots/blob/master/Premier%20League%202019-2020/output/AC%20Int_match_summary_plot.png
+https://ryo-n7.github.io/2019-08-21-visualize-soccer-statsbomb-part-1/
+
+```{r}
+df <- fb_match_shooting(match_url = "https://fbref.com/en/partidos/d8795059/Racing-Club-Godoy-Cruz-Julio-20-2024-Liga-Profesional-Argentina")
+
+df_xg <- df %>% 
+  select(Squad,Minute,xG,Outcome)
+
+df_xg$Minute <- as.numeric(df_xg$Minute )
+df_xg$xG <- as.numeric(df_xg$xG )
+
+write.csv(df,"df_prueba.csv")
+
+df_roll <- df_xg %>% 
+  group_by(Minute,Squad) %>% 
+  summarise(sumxg = sum(xG)) %>% 
+  ungroup() %>% 
+  group_by(Squad) %>% 
+  mutate(rollsum = lag(cumsum(sumxg)),
+         rollsum = if_else(is.na(rollsum), 0, rollsum))%>% 
+  select(Squad, Minute, rollsum, sumxg) %>%
+  mutate(rollsum = case_when(
+    row_number() == n() & sumxg != 0 ~ rollsum + sumxg,
+    TRUE ~ rollsum
+  ))
+
+##################################VER
+
+```
+
