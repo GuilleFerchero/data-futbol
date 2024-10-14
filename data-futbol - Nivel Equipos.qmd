@@ -39,6 +39,7 @@ library(tidyverse)
 library(DT)
 library(showtext)
 library(ggtext)
+library(ggrepel)
 #install.packages("polite")
 library(polite)
   
@@ -65,7 +66,7 @@ plot1: evolutivo media movil de xg y xga por temporada
 # df_lp2021   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2021/Racing-Club-Stats")
 # df_lp2022   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2022/Racing-Club-Stats")
 # df_lp2023   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2023/Racing-Club-Stats")
-# df_lp2024   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2024/Racing-Club-Stats")
+df_lp2024   <- fb_team_match_results("https://fbref.com/en/squads/8e20e13d/2024/Racing-Club-Stats")
 
 
 #df_racing <- rbind(df_lp2021,df_lp2022,df_lp2023,df_lp2024)
@@ -252,30 +253,141 @@ https://github.com/Ryo-N7/soccer_ggplots/blob/master/Premier%20League%202019-202
 https://ryo-n7.github.io/2019-08-21-visualize-soccer-statsbomb-part-1/
 
 ```{r}
+
+
 df <- fb_match_shooting(match_url = "https://fbref.com/en/partidos/d8795059/Racing-Club-Godoy-Cruz-Julio-20-2024-Liga-Profesional-Argentina")
+df_report <- fb_match_report(match_url = "https://fbref.com/en/partidos/d8795059/Racing-Club-Godoy-Cruz-Julio-20-2024-Liga-Profesional-Argentina")
+#df_summary <- fb_match_summary(match_url = "https://fbref.com/en/partidos/d8795059/Racing-Club-Godoy-Cruz-Julio-20-2024-Liga-Profesional-Argentina")
 
 df_xg <- df %>% 
-  select(Squad,Minute,xG,Outcome)
+  select(Squad,Minute,xG,Outcome) %>% 
+  mutate(Min_num = as.numeric(substr(Minute,1,2)),
+         Min_add = substr(Minute,4,5),
+         Min_add2 = replace_na(as.numeric(Min_add),0),
+         min = Min_num+Min_add2,
+         xG = as.numeric(xG)) %>% 
+  select(Squad,min,xG,Outcome)
+         
 
-df_xg$Minute <- as.numeric(df_xg$Minute )
-df_xg$xG <- as.numeric(df_xg$xG )
-
-write.csv(df,"df_prueba.csv")
+#write.csv(df,"df_prueba.csv")
 
 df_roll <- df_xg %>% 
-  group_by(Minute,Squad) %>% 
-  summarise(sumxg = sum(xG)) %>% 
+  group_by(min,Squad) %>% 
+  summarise(sumxg = sum(xG)) %>% #suma los xG en los minutos con mas de 1 caso
   ungroup() %>% 
   group_by(Squad) %>% 
-  mutate(rollsum = lag(cumsum(sumxg)),
-         rollsum = if_else(is.na(rollsum), 0, rollsum))%>% 
-  select(Squad, Minute, rollsum, sumxg) %>%
+  mutate(rollsum = (cumsum(sumxg)), #le saqué el lag
+         rollsum = if_else(is.na(rollsum), 0, rollsum))%>% #usa el cumsum con lag para que los 2 equipos empiecen con 0 a los 0 minutos
+  select(Squad, min, rollsum, sumxg) %>%
   mutate(rollsum = case_when(
     row_number() == n() & sumxg != 0 ~ rollsum + sumxg,
-    TRUE ~ rollsum
-  ))
+    TRUE ~ rollsum))
+
+
+df_goal <- df %>% 
+  filter(Outcome == "Goal") %>% 
+  select(Minute, Player, xG) %>% 
+  mutate(gol = glue::glue("{Player}: {xG} xG")) %>% 
+  rename("min" = Minute) %>% 
+  mutate(min = as.numeric(min))
+
+
+df_roll <- left_join(df_roll,df_goal)
+
+#Datos Auxiliares
+
+fecha <- df$Date[1]
+
+team_home <- df %>% 
+  filter(Home_Away == "Home") %>% 
+  select(Squad) %>% 
+  head(1) %>% 
+  pull()
+
+team_away <- df %>% 
+  filter(Home_Away == "Away") %>% 
+  select(Squad) %>% 
+  head(1) %>% 
+  pull()
+
+team_home_goals <- df %>% 
+  filter(Home_Away == "Home" & Outcome == "Goal") %>% 
+  count() %>% 
+  pull()
+  
+
+team_away_goals <- df %>% 
+  filter(Home_Away == "Away" & Outcome == "Goal") %>% 
+  count() %>% 
+  pull()
+
+team_home_color <- "#2c698d"
+
+team_away_color <- "#272643"
+
+tournament <- df_report %>% 
+  select(Matchweek) %>%
+  mutate(Matchweek = str_replace(Matchweek,"Matchweek","Fecha")) %>% 
+  pull()
 
 ##################################VER
 
 ```
+
+
+```{r}
+
+#| warning: false
+
+ggplot(df_roll, aes(x = min, y = rollsum, color = Squad))+
+  geom_line(size = 2.5)+
+  geom_point(data = df_roll %>% 
+               filter(!is.na(gol)),
+             aes(x = min, y = rollsum),
+                 show.legend = FALSE,
+             size = 4, shape = 21, fill = "white", stroke = 1.25)+
+  geom_label_repel(data = df_roll,
+             aes(x = min, y = rollsum, 
+                 color = team_home_color, label = gol),size = 15,
+             nudge_x = 8, nudge_y = 0.5,
+             show.legend = TRUE)+
+  geom_vline(xintercept = 45, color = "#1b1f2f", linetype = "dashed", size = 0.8)+
+  scale_x_continuous(breaks = c(seq(0, 90, by = 5), 94),
+                     labels = c(seq(0, 40, by = 5), "ET", 
+                                seq(50, 90, by = 5), "TC"),
+                     expand = c(0.01, 0),
+                     limits = c(0, 94))+
+  #scale_y_continuous(sec.axis = sec_axis(~ ., breaks = tot_clasico_df))+
+  labs(
+    title = glue::glue("<b style='color: {team_home_color}'>{team_home}: {team_home_goals} </b>
+                        <b style='color: {team_away_color}'>{team_away}: {team_away_goals} </b>"),
+    subtitle = glue::glue("{tournament} {fecha}"),
+    y = "xG",
+    x = NULL,
+    caption = "Fuente: Fbref"
+  )+
+  scale_color_manual(values = c("Racing Club" = team_home_color,
+                                 "Godoy Cruz" = team_away_color)) +
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    plot.title = element_markdown(size = 40, family = "montserrat", hjust = 0.5),
+    plot.subtitle = element_markdown(size = 30, family = "montserrat",hjust = 0.5),
+    plot.caption = element_text(size = 25),
+    plot.background = element_rect(fill = "#f7f6f6"),
+    panel.background = element_rect(fill = "#f7f6f6"),
+    panel.grid.minor = element_blank(),
+    axis.text = element_text(face = "bold", size = 20, color = "black"),
+    axis.ticks = element_blank(),
+    panel.grid.major = element_line(linetype = "dashed", color = "#2c698d", size = 0.1)
+  )
+
+
+ggsave("Output/Racing-Godoy.png", width = 12)
+
+#PENDIENTES: ARREGLAR ESCALA EJE Y, QUITAR BORDE, AGREGAR LOGOS / ESCUDOS
+
+```
+
+
 
