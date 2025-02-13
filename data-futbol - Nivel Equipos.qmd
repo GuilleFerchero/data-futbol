@@ -389,5 +389,14 @@ ggsave("Output/Racing-Godoy.png", width = 12)
 
 ```
 
+# VER GRAFICO DE EQUIPOS POR XG A FAVOR Y EN CONTRA
+
+
+```{r}
+
+
+
+
+```
 
 
