@@ -391,12 +391,63 @@ ggsave("Output/Racing-Godoy.png", width = 12)
 
 # VER GRAFICO DE EQUIPOS POR XG A FAVOR Y EN CONTRA
 
+## SCRAPEO DE ESCUDOS
+
+https://gist.github.com/Ryo-N7/fcfbbfc229250a18c3694192f1c75b4c
+
+https://ryo-n7.github.io/2020-05-14-webscrape-soccer-data-with-R/
 
 ```{r}
+
+install.packages("rvest")
+install.packages("httr")
+library(rvest)
+library(httr)
+library(polite)
+
+```
+
+```{r}
+
+url <- "https://www.transfermarkt.com/torneo-apertura/startseite/wettbewerb/ARG1"
+session <- bow(url)
+
+```
+
+
+```{r}
+team_name <- scrape(session) %>% 
+  html_nodes("#yw1 > table > tbody > tr > td.zentriert.no-border-rechts > a > img") %>% 
+  html_attr("alt")
+
+# average age
+avg_age <- scrape(session) %>% 
+  html_nodes("tbody .hide-for-pad:nth-child(5)") %>% 
+  html_text()
+
+# average value
+avg_value <- scrape(session) %>% 
+  html_nodes("tbody .rechts+ .hide-for-pad") %>% 
+  html_text()
+
+# team image
+team_img <- scrape(session) %>% 
+  html_nodes("#yw1 > table > tbody > tr > td.zentriert.no-border-rechts > a > img") %>% 
+  html_attr("src") %>% 
+  str_replace("/tiny/", "/head/")
+
+download.file(team_img[1], destfile = "escudo.png", mode = "wb")
+
+library(magick)
+img <- image_read("escudo.png")
+print(img)
+
+dir.create("escudos", showWarnings = FALSE)
 
 
 
 
 ```
+
 
 
